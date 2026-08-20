@@ -1,5 +1,5 @@
-import os
 import json
+import os
 import platform
 import random
 import time
@@ -8,6 +8,7 @@ import vk_api
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.options import Options
 from vk_api.utils import get_random_id
 
@@ -124,8 +125,12 @@ def load_cookies(driver):
     try:
         cookies = json.loads(cookies_json)
         # Сначала открываем домен, чтобы у браузера был контекст для куки
-        driver.get("https://hh.ru")
-        time.sleep(2)
+        driver.set_page_load_timeout(15)
+        try:
+            # Пытаемся открыть сайт для инициализации домена
+            driver.get("https://hh.ru")
+        except TimeoutException:
+            print("⚠️ Таймаут при первой загрузке hh.ru, пробуем добавить куки всё равно...")
         for cookie in cookies:
             # Очищаем куки от полей, которые могут вызвать ошибку в Selenium
             cookie_dict = {
@@ -148,17 +153,20 @@ def load_cookies(driver):
 
 def main():
     print("🚀 Запуск браузера...")
-    init_db()
     options = Options()
     # Определяем операционную систему
     is_linux = platform.system() == "Linux"
     if is_linux:
-        # Selenium Manager (встроен в Selenium 4.15+) сам найдет браузер в PATH,
-        # но мы явно укажем стандартное имя для надёжности
-        options.binary_location = os.getenv("CHROME_BIN", "google-chrome")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
+        # Максимально стабильные настройки для GitHub Actions / Linux
         options.add_argument("--headless=new")
+        options.add_argument("--no-sandbox")                  # Обязательно для CI
+        options.add_argument("--disable-dev-shm-usage")       # Обязательно для CI
+        options.add_argument("--disable-gpu")                 # Стабильность в headless
+        options.add_argument("--window-size=1920,1080")       # Фиксируем размер окна
+        options.add_argument("--disable-extensions")          # Ускоряет запуск
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option('useAutomationExtension', False)
     else:
         # Твои оригинальные настройки для Windows
         options.add_argument(r"--user-data-dir=C:\Users\goodw\Desktop\selenium_hh_parser\selenium_profile")
@@ -172,6 +180,8 @@ def main():
     driver = webdriver.Chrome(options=options)
     load_cookies(driver)
     # driver.maximize_window() # Для работы с открытым окном
+    driver.set_page_load_timeout(60)
+    init_db()
     global_count = 0
     try:
         for page in range(MAX_SEARCH_PAGES):
