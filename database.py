@@ -7,7 +7,13 @@ load_dotenv()
 
 
 def get_db_connection():
-    """Возвращает подключение к базе данных."""
+    """Возвращает подключение к базе данных (облачной или локальной)."""
+    # Если есть DATABASE_URL (из GitHub Secrets), используем его
+    database_url = os.getenv("DATABASE_URL")
+    if database_url:
+        return psycopg2.connect(database_url)
+    
+    # Иначе используем локальные переменные из .env
     return psycopg2.connect(
         dbname=os.getenv("POSTGRES_DB", "parser"),
         user=os.getenv("POSTGRES_USER", "parser_user"),

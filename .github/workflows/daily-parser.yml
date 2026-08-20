@@ -1,0 +1,38 @@
+name: Daily HH Parser
+
+on:
+  schedule:
+    # Запуск в 4:00 UTC = 9:00 по Челябинску (UTC+5)
+    - cron: '0 4 * * *'
+  workflow_dispatch:  # Позволяет запустить вручную для теста
+
+jobs:
+  run-parser:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Install Chrome & ChromeDriver
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser chromium-chromedriver
+          sudo ln -s /usr/bin/chromium-browser /usr/bin/google-chrome
+
+      - name: Run parser
+        env:
+          VK_TOKEN: ${{ secrets.VK_TOKEN }}
+          VK_USER_ID: ${{ secrets.VK_USER_ID }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python main.py
+  
