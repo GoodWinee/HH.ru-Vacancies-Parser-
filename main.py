@@ -11,6 +11,7 @@ from selenium.webdriver.chrome.options import Options
 from vk_api.utils import get_random_id
 
 from constants import KEYWORD, LOCATION, MAX_SEARCH_PAGES, SEARCH_URL
+from database import init_db, is_vacancy_processed, save_vacancy
 
 load_dotenv()
 
@@ -29,6 +30,9 @@ def search_vacancy(html_content, target_location, global_count):
             continue
         title_text = title_link.get_text(strip=True)
         job_url = title_link.get("href")
+        if is_vacancy_processed(job_url):
+            print(f"⏭️ Пропуск (уже в базе): {title_text}")
+            continue
         if KEYWORD.lower() not in title_text.lower():
             continue
         desc_tag = vac.find("div", attrs={"data-qa": "vacancy-serp__vacancy_snippet_responsibility"})
@@ -68,7 +72,7 @@ def search_vacancy(html_content, target_location, global_count):
         global_count += 1
         work_text = "Можно удалённо" if is_remote else "Офис"
         send_to_vk(global_count, title_text, job_url, exp_text, work_text, city_text, description)
-
+        save_vacancy(job_url)
     print(f"\n На этой странице найдено: {count} | Всего: {global_count}")
     return global_count
 
@@ -112,6 +116,7 @@ def send_to_vk(count, title_text, job_url, exp_text, work_text, city_text, descr
 
 def main():
     print("🚀 Запуск браузера...")
+    init_db()
     options = Options()
     # Определяем операционную систему
     is_linux = platform.system() == "Linux"

@@ -1,12 +1,32 @@
 version: '3.8'
 
 services:
+  db:
+    image: postgres:15-alpine
+    container_name: hh_parser_db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   hh-parser:
     build: .
     container_name: hh-vacancy-parser
     env_file:
       - .env
-    # Если захочешь сохранять логи или результаты в папку на хосте, раскомментируй:
-    # volumes:
-    #   - ./logs:/app/logs
-    restart: "no" # Скрипт отработает и завершится. Можно поставить "always", если добавишь бесконечный цикл
+    depends_on:
+      db:
+        condition: service_healthy # Ждём, пока БД полностью загрузится
+    restart: "no"
+
+volumes:
+  postgres_data: # Именованный том для сохранения данных между перезапусками
