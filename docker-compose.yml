@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  hh-parser:
+    build: .
+    container_name: hh-vacancy-parser
+    env_file:
+      - .env
+    # Если захочешь сохранять логи или результаты в папку на хосте, раскомментируй:
+    # volumes:
+    #   - ./logs:/app/logs
+    restart: "no" # Скрипт отработает и завершится. Можно поставить "always", если добавишь бесконечный цикл

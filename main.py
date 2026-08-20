@@ -1,13 +1,16 @@
-import time
+import os
+import platform
 import random
+import time
+
+import vk_api
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-import os
-import vk_api
 from vk_api.utils import get_random_id
-from constants import SEARCH_URL, KEYWORD, LOCATION, MAX_SEARCH_PAGES
-from dotenv import load_dotenv
+
+from constants import KEYWORD, LOCATION, MAX_SEARCH_PAGES, SEARCH_URL
 
 load_dotenv()
 
@@ -110,10 +113,21 @@ def send_to_vk(count, title_text, job_url, exp_text, work_text, city_text, descr
 def main():
     print("🚀 Запуск браузера...")
     options = Options()
-    options.add_argument(r"--user-data-dir=C:\Users\goodw\Desktop\selenium_hh_parser\selenium_profile")
-    options.add_argument("--remote-debugging-port=9222")
-    options.add_argument("--headless=new") # Для работы в фоне
-    options.add_argument("--window-size=1920,1080") # Для работы в фоне
+    # Определяем операционную систему
+    is_linux = platform.system() == "Linux"
+    if is_linux:
+        # Настройки для Docker / Linux
+        options.binary_location = os.getenv("CHROME_BIN", "/usr/bin/chromium")
+        options.add_argument("--no-sandbox")  # КРИТИЧНО для Docker
+        options.add_argument("--disable-dev-shm-usage")  # КРИТИЧНО для Docker (избегает ошибок памяти)
+        options.add_argument("--headless=new")
+    else:
+        # Твои оригинальные настройки для Windows
+        options.add_argument(r"--user-data-dir=C:\Users\goodw\Desktop\selenium_hh_parser\selenium_profile")
+        options.add_argument("--remote-debugging-port=9222")
+        options.add_argument("--headless=new") # Для работы в фоне/С открытым окном - закомментируй
+        options.add_argument("--window-size=1920,1080") # Для работы в фоне/С открытым окном - закомментируй
+
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)
