@@ -1,4 +1,5 @@
 import os
+import json
 import platform
 import random
 import time
@@ -114,6 +115,37 @@ def send_to_vk(count, title_text, job_url, exp_text, work_text, city_text, descr
     print(f"📝 Описание: {description[:500]}...\n")
 
 
+def load_cookies(driver):
+    """Загружает куки из GitHub Secrets для авторизации на hh.ru"""
+    cookies_json = os.getenv("HH_COOKIES")
+    if not cookies_json:
+        print("⚠️ HH_COOKIES не найдены в окружении. Запуск без авторизации.")
+        return
+    try:
+        cookies = json.loads(cookies_json)
+        # Сначала открываем домен, чтобы у браузера был контекст для куки
+        driver.get("https://hh.ru")
+        time.sleep(2)
+        for cookie in cookies:
+            # Очищаем куки от полей, которые могут вызвать ошибку в Selenium
+            cookie_dict = {
+                "name": cookie.get("name"),
+                "value": cookie.get("value"),
+                "domain": cookie.get("domain", ".hh.ru"),
+                "path": cookie.get("path", "/")
+            }
+            try:
+                driver.add_cookie(cookie_dict)
+            except Exception:
+                pass  # Игнорируем ошибки добавления отдельных куки
+        # Перезагружаем страницу, чтобы куки применились
+        driver.get("https://hh.ru")
+        time.sleep(2)
+        print("✅ Куки успешно загружены, браузер авторизован!")
+    except Exception as e:
+        print(f"❌ Ошибка при загрузке куки: {e}")
+
+
 def main():
     print("🚀 Запуск браузера...")
     init_db()
@@ -121,10 +153,11 @@ def main():
     # Определяем операционную систему
     is_linux = platform.system() == "Linux"
     if is_linux:
-        # Настройки для Docker / Linux
-        options.binary_location = os.getenv("CHROME_BIN", "/usr/bin/chromium")
-        options.add_argument("--no-sandbox")  # КРИТИЧНО для Docker
-        options.add_argument("--disable-dev-shm-usage")  # КРИТИЧНО для Docker (избегает ошибок памяти)
+        # Selenium Manager (встроен в Selenium 4.15+) сам найдет браузер в PATH,
+        # но мы явно укажем стандартное имя для надёжности
+        options.binary_location = os.getenv("CHROME_BIN", "google-chrome")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--headless=new")
     else:
         # Твои оригинальные настройки для Windows
@@ -137,6 +170,7 @@ def main():
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)
     driver = webdriver.Chrome(options=options)
+    load_cookies(driver)
     # driver.maximize_window() # Для работы с открытым окном
     global_count = 0
     try:
